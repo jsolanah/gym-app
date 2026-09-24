@@ -167,6 +167,7 @@ function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
 let state = loadData();
 if (!state.history) state.history = [];
 if (!state.lastPerformance) state.lastPerformance = {};
+if (!state.restTimer) state.restTimer = null;
 if (!state.routines || !state.routines.length) state.routines = JSON.parse(JSON.stringify(DEFAULT_ROUTINES));
 if (!state.customExercises) state.customExercises = [];
 if (!state.nameOverrides) state.nameOverrides = {};
@@ -193,21 +194,38 @@ let restInterval = null;
 let restRemaining = 0;
 function startRestTimer(seconds = REST_SECONDS) {
  clearInterval(restInterval);
- restRemaining = seconds;
+ state.restTimer = { endsAt: Date.now() + seconds * 1000 };
+ saveData();
  restTimerEl.classList.remove('hidden');
  updateRestUI();
+ scheduleRestTimer();
+}
+function scheduleRestTimer() {
+ clearInterval(restInterval);
+ if (!state.restTimer) return;
+ if (getRestRemaining() <= 0) {
+   finishRestTimer();
+   return;
+ }
+ restTimerEl.classList.remove('hidden');
  restInterval = setInterval(() => {
-   restRemaining--;
    updateRestUI();
    if (restRemaining <= 0) finishRestTimer();
  }, 1000);
 }
+function getRestRemaining() {
+ if (!state.restTimer) return 0;
+ return Math.max(0, Math.ceil((state.restTimer.endsAt - Date.now()) / 1000));
+}
 function updateRestUI() {
+ restRemaining = getRestRemaining();
  restRing.textContent = restRemaining > 0 ? restRemaining : '0';
  restTimerEl.classList.toggle('timer-alert', restRemaining <= 5);
 }
 function finishRestTimer() {
  clearInterval(restInterval);
+ state.restTimer = null;
+ saveData();
  restTimerEl.classList.add('hidden');
  beep(1046, 0.3);
  setTimeout(() => beep(1318, 0.3), 200);
@@ -215,9 +233,16 @@ function finishRestTimer() {
 }
 document.getElementById('restSkip').addEventListener('click', finishRestTimer);
 document.getElementById('restMinus15').addEventListener('click', () => {
- restRemaining = Math.max(1, restRemaining - 15);
+ if (!state.restTimer) return;
+ state.restTimer.endsAt = Math.max(Date.now() + 1000, state.restTimer.endsAt - 15000);
+ saveData();
  updateRestUI();
 });
+document.addEventListener('visibilitychange', () => {
+ if (document.hidden) clearInterval(restInterval);
+ else scheduleRestTimer();
+});
+window.addEventListener('pageshow', scheduleRestTimer);
 /* Router */
 let view = { tab: 'rutinas', dayId: null, exerciseId: null, historyIdx: null };
 let renamingRoutineState = false;
@@ -670,12 +695,15 @@ function renderEntrenar() {
 </div>
  `;
  renderExList();
+ scheduleRestTimer();
  tickElapsed();
  clearInterval(window.__elapsedInterval);
  window.__elapsedInterval = setInterval(tickElapsed, 1000);
  document.getElementById('finishSessionBtn').addEventListener('click', finishSession);
  document.getElementById('cancelSessionBtn').addEventListener('click', () => {
    clearInterval(window.__elapsedInterval);
+   clearInterval(restInterval);
+   state.restTimer = null;
    state.activeSession = null;
    saveData();
    render();
@@ -815,6 +843,7 @@ function finishSession() {
  if (state.history.length > 200) state.history.length = 200;
  clearInterval(window.__elapsedInterval);
  clearInterval(restInterval);
+ state.restTimer = null;
  restTimerEl.classList.add('hidden');
  state.activeSession = null;
  saveData();
