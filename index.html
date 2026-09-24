@@ -249,7 +249,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pageshow', scheduleRestTimer);
 /* Router */
-let view = { tab: 'rutinas', dayId: null, exerciseId: null, historyIdx: null };
+let view = { tab: state.activeSession ? 'entrenar' : 'rutinas', dayId: null, exerciseId: null, historyIdx: null };
 let renamingRoutineState = false;
 let renamingExerciseState = false;
 const mainView = document.getElementById('mainView');
@@ -296,6 +296,15 @@ function render() {
  void mainView.offsetWidth;
  mainView.classList.add('fade-in');
 }
+function showActiveSessionOnResume() {
+ if (!state.activeSession || view.tab === 'entrenar') return;
+ view = { tab: 'entrenar', dayId: null, exerciseId: null, historyIdx: null };
+ render();
+}
+document.addEventListener('visibilitychange', () => {
+ if (!document.hidden) showActiveSessionOnResume();
+});
+window.addEventListener('pageshow', showActiveSessionOnResume);
 /* GESTIÓN DE CLICS SEGURA (COMPATIBLE CON iOS Y SIN BLOQUEOS DE CONFIRM) */
 mainView.addEventListener('click', (e) => {
  // 1. Eliminar ejercicio de una rutina
