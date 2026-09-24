@@ -53,6 +53,8 @@
  .btn-danger { background-color: #450a0a; border: 1px solid #991b1b; color: #f87171; font-weight: 600; border-radius: 1rem; padding: 0.65rem 1rem; width: 100%; cursor: pointer; }
  .input-field { width: 100%; background-color: #262626; border: 1px solid #404040; border-radius: 0.75rem; padding: 0.65rem 0.75rem; font-size: 0.875rem; color: #f5f5f5; outline: none; }
  .input-field:focus { border-color: #059669; }
+ .set-input { width: 3.25rem; background: transparent; border: 1px solid transparent; border-radius: 0.4rem; color: #f5f5f5; font: inherit; font-size: 0.875rem; font-weight: 700; line-height: 1; padding: 0.2rem; text-align: center; outline: none; user-select: text; -webkit-user-select: text; }
+ .set-input:focus { background: #262626; border-color: #059669; }
  .flex { display: flex; }
  .flex-1 { flex: 1; }
  .items-center { align-items: center; }
@@ -710,7 +712,7 @@ function renderExList() {
 <div class="flex items-center gap-1 flex-1 justify-center">
 <button class="stepBtn tap-scale" data-exi="${exi}" data-si="${si}" data-field="weight" data-delta="-1.25" style="width:1.75rem; height:1.75rem; border-radius:9999px; background:#262626; color:#f5f5f5; border:none; font-weight:bold; cursor:pointer;">−</button>
 <div style="text-align:center; min-width:46px;">
-<div class="text-sm font-bold" style="line-height:1;">${set.weight}</div>
+<input class="set-input" type="number" inputmode="decimal" min="0" step="0.01" value="${set.weight}" data-exi="${exi}" data-si="${si}" data-field="weight" aria-label="Peso de la serie ${si + 1} en ${ex.name}">
 <div class="text-xs text-neutral-500" style="font-size:9px;">kg</div>
 </div>
 <button class="stepBtn tap-scale" data-exi="${exi}" data-si="${si}" data-field="weight" data-delta="1.25" style="width:1.75rem; height:1.75rem; border-radius:9999px; background:#262626; color:#f5f5f5; border:none; font-weight:bold; cursor:pointer;">+</button>
@@ -718,7 +720,7 @@ function renderExList() {
 <div class="flex items-center gap-1 flex-1 justify-center">
 <button class="stepBtn tap-scale" data-exi="${exi}" data-si="${si}" data-field="reps" data-delta="-1" style="width:1.75rem; height:1.75rem; border-radius:9999px; background:#262626; color:#f5f5f5; border:none; font-weight:bold; cursor:pointer;">−</button>
 <div style="text-align:center; min-width:36px;">
-<div class="text-sm font-bold" style="line-height:1;">${set.reps}</div>
+<input class="set-input" type="number" inputmode="numeric" min="0" step="1" value="${set.reps}" data-exi="${exi}" data-si="${si}" data-field="reps" aria-label="Repeticiones de la serie ${si + 1} en ${ex.name}">
 <div class="text-xs text-neutral-500" style="font-size:9px;">reps</div>
 </div>
 <button class="stepBtn tap-scale" data-exi="${exi}" data-si="${si}" data-field="reps" data-delta="1" style="width:1.75rem; height:1.75rem; border-radius:9999px; background:#262626; color:#f5f5f5; border:none; font-weight:bold; cursor:pointer;">+</button>
@@ -737,6 +739,28 @@ function renderExList() {
      set[field] = Math.max(0, +(set[field] + parseFloat(delta)).toFixed(2));
      saveData();
      renderExList();
+   });
+ });
+ list.querySelectorAll('.set-input').forEach(input => {
+   const commitValue = () => {
+     const { exi, si, field } = input.dataset;
+     const set = state.activeSession.exercises[+exi].sets[+si];
+    const value = Number(input.value);
+    if (!input.value.trim() || !Number.isFinite(value) || value < 0) {
+       input.value = set[field];
+       return;
+     }
+     set[field] = field === 'weight' ? Number(value.toFixed(2)) : Math.round(value);
+     input.value = set[field];
+     saveData();
+   };
+   input.addEventListener('change', commitValue);
+   input.addEventListener('blur', commitValue);
+   input.addEventListener('keydown', e => {
+     if (e.key === 'Enter') {
+       e.preventDefault();
+       input.blur();
+     }
    });
  });
  list.querySelectorAll('.doneBtn').forEach(btn => {
