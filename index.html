@@ -158,6 +158,13 @@ const DEFAULT_ROUTINES = [
 ];
 const routineById = id => state.routines.find(r => r.id === id);
 const DEFAULT_SETS = 3, DEFAULT_REPS = 10, DEFAULT_WEIGHT = 20, REST_SECONDS = 90;
+const CORE_DEFAULT_REPS = 15, CORE_DEFAULT_WEIGHT = 0;
+function getExerciseDefaults(exerciseId) {
+ const exercise = exById(exerciseId);
+ return exercise && exercise.muscle === 'Core'
+   ? { reps: CORE_DEFAULT_REPS, weight: CORE_DEFAULT_WEIGHT }
+   : { reps: DEFAULT_REPS, weight: DEFAULT_WEIGHT };
+}
 const STORAGE_KEY = 'gymoffline_data_v10';
 function loadData() {
  try {
@@ -673,8 +680,8 @@ function startSession(day) {
      exerciseId: id,
      name: exById(id) ? exById(id).name : 'Ejercicio',
      sets: Array.from({ length: DEFAULT_SETS }, () => ({
-       weight: state.lastPerformance[id] ? state.lastPerformance[id].weight : DEFAULT_WEIGHT,
-       reps: state.lastPerformance[id] ? state.lastPerformance[id].reps : DEFAULT_REPS,
+       weight: state.lastPerformance[id] ? state.lastPerformance[id].weight : getExerciseDefaults(id).weight,
+       reps: state.lastPerformance[id] ? state.lastPerformance[id].reps : getExerciseDefaults(id).reps,
        done: false
      }))
    }))
@@ -738,13 +745,14 @@ function renderExList() {
  list.innerHTML = s.exercises.map((ex, exi) => {
    const last = state.lastPerformance[ex.exerciseId];
    const exerciseObj = exById(ex.exerciseId);
+   const isCore = exerciseObj && exerciseObj.muscle === 'Core';
    return `
 <div class="card">
 <div class="flex items-center gap-3" style="margin-bottom:0.75rem;">
        ${exerciseObj ? exThumbHtml(exerciseObj, 'width:3rem; height:3rem;') : ''}
 <div class="flex-1 truncate">
 <div class="font-semibold text-sm truncate">${ex.name}</div>
-<div class="text-xs text-neutral-500">${last ? `Última vez: ${last.weight}kg × ${last.reps}` : 'Sin registros previos'}</div>
+<div class="text-xs text-neutral-500">${last ? `Última vez: ${last.weight}${isCore ? 'kg añadidos' : 'kg'} × ${last.reps}` : 'Sin registros previos'}</div>
 </div>
 <button class="addSetBtn tap-scale" data-exi="${exi}" style="background:#262626; color:#34d399; font-size:0.75rem; font-weight:bold; border:none; padding:0.35rem 0.6rem; border-radius:0.5rem; cursor:pointer;">+ Serie</button>
 </div>
@@ -756,7 +764,7 @@ function renderExList() {
 <button class="stepBtn tap-scale" data-exi="${exi}" data-si="${si}" data-field="weight" data-delta="-1.25" style="width:1.75rem; height:1.75rem; border-radius:9999px; background:#262626; color:#f5f5f5; border:none; font-weight:bold; cursor:pointer;">−</button>
 <div style="text-align:center; min-width:46px;">
 <input class="set-input" type="number" inputmode="decimal" min="0" step="0.01" value="${set.weight}" data-exi="${exi}" data-si="${si}" data-field="weight" aria-label="Peso de la serie ${si + 1} en ${ex.name}">
-<div class="text-xs text-neutral-500" style="font-size:9px;">kg</div>
+<div class="text-xs text-neutral-500" style="font-size:9px;">${isCore ? 'kg añadidos' : 'kg'}</div>
 </div>
 <button class="stepBtn tap-scale" data-exi="${exi}" data-si="${si}" data-field="weight" data-delta="1.25" style="width:1.75rem; height:1.75rem; border-radius:9999px; background:#262626; color:#f5f5f5; border:none; font-weight:bold; cursor:pointer;">+</button>
 </div>
@@ -829,7 +837,7 @@ function renderExList() {
    btn.addEventListener('click', () => {
      const exi = +btn.dataset.exi;
      const sets = state.activeSession.exercises[exi].sets;
-     const last = sets[sets.length - 1] || { weight: DEFAULT_WEIGHT, reps: DEFAULT_REPS };
+     const last = sets[sets.length - 1] || getExerciseDefaults(state.activeSession.exercises[exi].exerciseId);
      sets.push({ weight: last.weight, reps: last.reps, done: false });
      saveData();
      renderExList();
